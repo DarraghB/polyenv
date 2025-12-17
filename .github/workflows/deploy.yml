@@ -10,17 +10,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      # 1️⃣ Checkout your repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up SSH key
-      uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ secrets.PI_SSH_KEY }}
+      # 2️⃣ Load SSH private key into the agent
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PI_SSH_KEY }}
 
-    - name: Deploy to Raspberry Pi
-      run: |
-        echo "Deploying deployment.php to Raspberry Pi..."
-        scp -o  deployment.php ${{ vars.PI_USER }}@${{ vars.PI_HOST }}:/home/${{ vars.PI_USER }}/deployment.php
-        ssh -o ${{ vars.PI_USER }}@${{ vars.PI_HOST }} 'php /home/${{ vars.PI_USER }}/deployment.php'
+      # 3️⃣ Trust the Raspberry Pi host + deploy
+      - name: Deploy to Raspberry Pi
+        run: |
+          echo "Deploying deployment.php to Raspberry Pi..."
+
+          # Ensure SSH directory exists
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          # Add Raspberry Pi host key (prevents host key verification failure)
+          ssh-keyscan -H ${{ vars.PI_HOST }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+          # Copy file to Raspberry Pi
+          scp deployment.php \
+            ${{ vars.PI_USER }}@${{ vars.PI_HOST }}:/home/${{ vars.PI_USER }}/deployment.php
+
+          # Run PHP script on Raspberry Pi
+          ssh ${{ vars.PI_USER }}@${{ vars.PI_HOST }} \
+            'php /home/${{ vars.PI_USER }}/deployment.php'
 
