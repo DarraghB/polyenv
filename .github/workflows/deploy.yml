@@ -10,19 +10,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1️⃣ Checkout the repository
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    # 2️⃣ Set up SSH agent with the secret key
     - name: Set up SSH key
-      uses: webfactory/ssh-agent@v0.8.1
+      uses: webfactory/ssh-agent@v0.9.0
       with:
         ssh-private-key: ${{ secrets.PI_SSH_KEY }}
 
-    # 3️⃣ Copy deployment.php and execute it on the Pi
     - name: Deploy to Raspberry Pi
       run: |
         echo "Deploying deployment.php to Raspberry Pi..."
         scp deployment.php ${{ vars.PI_USER }}@${{ vars.PI_HOST }}:/home/${{ vars.PI_USER }}/deployment.php
         ssh ${{ vars.PI_USER }}@${{ vars.PI_HOST }} 'php /home/${{ vars.PI_USER }}/deployment.php'
+
