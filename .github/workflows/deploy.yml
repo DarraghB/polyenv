@@ -21,6 +21,6 @@ jobs:
     - name: Deploy to Raspberry Pi
       run: |
         echo "Deploying deployment.php to Raspberry Pi..."
-        scp deployment.php ${{ vars.PI_USER }}@${{ vars.PI_HOST }}:/home/${{ vars.PI_USER }}/deployment.php
-        ssh ${{ vars.PI_USER }}@${{ vars.PI_HOST }} 'php /home/${{ vars.PI_USER }}/deployment.php'
+        scp -o  deployment.php ${{ vars.PI_USER }}@${{ vars.PI_HOST }}:/home/${{ vars.PI_USER }}/deployment.php
+        ssh -o ${{ vars.PI_USER }}@${{ vars.PI_HOST }} 'php /home/${{ vars.PI_USER }}/deployment.php'
 
