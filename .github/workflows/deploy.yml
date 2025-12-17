@@ -32,7 +32,7 @@ jobs:
         run: |
           docker buildx build \
             --platform linux/arm/v7 \
-            --tag ghcr.io/${{ github.repository_owner }}/php-deploy:latest \
+            --tag ghcr.io/darraghb/php-deploy:latest \
             --push .
 
       # 5️⃣ Deploy container to Raspberry Pi over SSH
@@ -49,12 +49,12 @@ jobs:
 
           # Deploy on Raspberry Pi
           ssh ${{ vars.PI_USER }}@${{ vars.PI_HOST }} << 'EOF'
-            docker pull ghcr.io/${GITHUB_REPOSITORY_OWNER}/php-deploy:latest
+            docker pull ghcr.io/darraghb/php-deploy:latest
 
             docker stop php-deploy || true
             docker rm php-deploy || true
 
             docker run -d \
               --name php-deploy \
-              ghcr.io/${GITHUB_REPOSITORY_OWNER}/php-deploy:latest
+              ghcr.io/darraghb/php-deploy:latest
           EOF
