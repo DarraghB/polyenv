@@ -1,4 +1,4 @@
-name: Deploy PHP App to Raspberry Pi
+name: Build & Deploy PHP Container to Pi
 
 on:
   push:
@@ -6,38 +6,48 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout your repo
+      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Load SSH private key into the agent
-      - name: Set up SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
+      # 2️⃣ Log in to GHCR
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
         with:
-          ssh-private-key: ${{ secrets.PI_SSH_KEY }}
+          registry: ghcr.io
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_PAT }}
 
-      # 3️⃣ Trust the Raspberry Pi host + deploy
+      # 3️⃣ Set up Docker Buildx for multi-arch builds
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # 4️⃣ Build and push Docker image for ARM
+      - name: Build and push Docker image
+        run: |
+          docker buildx build \
+            --platform linux/arm/v7 \
+            --tag ghcr.io/${{ github.repository_owner }}/php-deploy:latest \
+            --push .
+
+      # 5️⃣ Deploy to Raspberry Pi
       - name: Deploy to Raspberry Pi
         run: |
-          echo "Deploying deployment.php to Raspberry Pi..."
-
-          # Ensure SSH directory exists
           mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-
-          # Add Raspberry Pi host key (prevents host key verification failure)
           ssh-keyscan -H ${{ vars.PI_HOST }} >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
 
-          # Copy file to Raspberry Pi
-          scp deployment.php \
-            ${{ vars.PI_USER }}@${{ vars.PI_HOST }}:/home/${{ vars.PI_USER }}/deployment.php
+          ssh -i ~/.ssh/id_rsa ${{ vars.PI_USER }}@${{ vars.PI_HOST }} << 'EOF'
+            # Pull the latest image
+            docker pull ghcr.io/${GITHUB_REPOSITORY_OWNER}/php-deploy:latest
 
-          # Run PHP script on Raspberry Pi
-          ssh ${{ vars.PI_USER }}@${{ vars.PI_HOST }} \
-            'php /home/${{ vars.PI_USER }}/deployment.php'
+            # Stop old container if exists
+            docker stop php-deploy || true
+            docker rm php-deploy || true
 
+            # Run new container
+            docker run -d --name php-deploy ghcr.io/${GITHUB_REPOSITORY_OWNER}/php-deploy:latest
+          EOF
